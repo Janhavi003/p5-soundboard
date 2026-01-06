@@ -1,3 +1,5 @@
+let isHover = false;
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
 }
@@ -9,12 +11,12 @@ function draw() {
   const buttonWidth = 200;
   const buttonHeight = 100;
 
-  // center position (CORNER mode)
+  // center position
   const x = width / 2 - buttonWidth / 2;
   const y = height / 2 - buttonHeight / 2;
 
-  // hover check
-  const isHover =
+  // hover detection
+  isHover =
     mouseX > x &&
     mouseX < x + buttonWidth &&
     mouseY > y &&
@@ -30,4 +32,10 @@ function draw() {
 
   // draw button
   rect(x, y, buttonWidth, buttonHeight, 12);
+}
+
+function mousePressed() {
+  if (isHover) {
+    console.log("Button clicked!");
+  }
 }
