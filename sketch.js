@@ -1,94 +1,108 @@
-// -----------------------------
-// Global state variables
-// -----------------------------
-let isHover = false;
-let isPressed = false;
-let clickSound;
+// ----------------------------------
+// Global variables
+// ----------------------------------
+let buttons = [];
+let sounds = [];
 
-// -----------------------------
-// Load assets before sketch starts
-// -----------------------------
+// ----------------------------------
+// Load sounds before sketch starts
+// ----------------------------------
 function preload() {
-  clickSound = loadSound("assets/sounds/click.mp3");
+  sounds.push(loadSound("assets/sounds/kick.mp3"));
+  sounds.push(loadSound("assets/sounds/snare.mp3"));
+  sounds.push(loadSound("assets/sounds/hat.mp3"));
+  sounds.push(loadSound("assets/sounds/clap.mp3"));
 }
 
-// -----------------------------
+// ----------------------------------
 // Setup runs once
-// -----------------------------
+// ----------------------------------
 function setup() {
   createCanvas(windowWidth, windowHeight);
+
+  const buttonWidth = 160;
+  const buttonHeight = 100;
+  const spacing = 40;
+
+  // calculate starting position to center row
+  const totalWidth =
+    sounds.length * buttonWidth +
+    (sounds.length - 1) * spacing;
+
+  let startX = width / 2 - totalWidth / 2;
+  let y = height / 2 - buttonHeight / 2;
+
+  // create buttons
+  for (let i = 0; i < sounds.length; i++) {
+    buttons.push({
+      x: startX + i * (buttonWidth + spacing),
+      y: y,
+      width: buttonWidth,
+      height: buttonHeight,
+      sound: sounds[i],
+      isHover: false,
+      isPressed: false
+    });
+  }
 }
 
-// -----------------------------
-// Draw runs every frame
-// -----------------------------
+// ----------------------------------
+// Draw loop
+// ----------------------------------
 function draw() {
   background(20);
 
-  // -----------------------------
-  // Button size
-  // -----------------------------
-  const buttonWidth = 200;
-  const buttonHeight = 100;
+  for (let button of buttons) {
+    drawButton(button);
+  }
+}
 
-  // -----------------------------
-  // Center position (CORNER mode)
-  // -----------------------------
-  const x = width / 2 - buttonWidth / 2;
-  const y = height / 2 - buttonHeight / 2;
+// ----------------------------------
+// Draw a single button
+// ----------------------------------
+function drawButton(button) {
+  // hover detection
+  button.isHover =
+    mouseX > button.x &&
+    mouseX < button.x + button.width &&
+    mouseY > button.y &&
+    mouseY < button.y + button.height;
 
-  // -----------------------------
-  // Hover detection
-  // -----------------------------
-  isHover =
-    mouseX > x &&
-    mouseX < x + buttonWidth &&
-    mouseY > y &&
-    mouseY < y + buttonHeight;
-
-  // -----------------------------
-  // Button style
-  // -----------------------------
+  // style
   noStroke();
 
-  if (isHover) {
+  if (button.isHover) {
     fill(90, 210, 230);
-
-    // ✨ optional glow effect
     drawingContext.shadowBlur = 20;
-    drawingContext.shadowColor = "rgba(90, 210, 230, 0.6)";
+    drawingContext.shadowColor = "rgba(90,210,230,0.6)";
   } else {
     fill(60, 180, 200);
     drawingContext.shadowBlur = 0;
   }
 
-  // -----------------------------
-  // Click animation (scale)
-  // -----------------------------
-  let scaleFactor = isPressed ? 0.95 : 1;
+  // click animation
+  let scaleFactor = button.isPressed ? 0.95 : 1;
+  let w = button.width * scaleFactor;
+  let h = button.height * scaleFactor;
+  let x = button.x + (button.width - w) / 2;
+  let y = button.y + (button.height - h) / 2;
 
-  const animatedWidth = buttonWidth * scaleFactor;
-  const animatedHeight = buttonHeight * scaleFactor;
+  rect(x, y, w, h, 12);
 
-  const drawX = width / 2 - animatedWidth / 2;
-  const drawY = height / 2 - animatedHeight / 2;
-
-  // -----------------------------
-  // Draw button
-  // -----------------------------
-  rect(drawX, drawY, animatedWidth, animatedHeight, 12);
-
-  // Reset click state (one-frame press)
-  isPressed = false;
+  // reset press state
+  button.isPressed = false;
 }
 
-// -----------------------------
+// ----------------------------------
 // Mouse click handler
-// -----------------------------
+// ----------------------------------
 function mousePressed() {
-  if (isHover) {
-    userStartAudio(); 
-    clickSound.play();
-    isPressed = true;
+  userStartAudio();
+
+  for (let button of buttons) {
+    if (button.isHover) {
+      button.sound.play();
+      button.isPressed = true;
+    }
   }
 }
