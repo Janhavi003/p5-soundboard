@@ -1,14 +1,27 @@
 // ----------------------------------
-// Button class (scalable & clean)
+// Global variables
+// ----------------------------------
+let buttons = [];
+let sounds = [];
+
+let currentTop;
+let currentBottom;
+let targetTop;
+let targetBottom;
+let gradientLerp = 1;
+
+// ----------------------------------
+// Button class
 // ----------------------------------
 class SoundButton {
-  constructor(x, y, size, sound, label, keyCode) {
+  constructor(x, y, size, sound, label, keyCode, baseColor) {
     this.x = x;
     this.y = y;
     this.size = size;
     this.sound = sound;
     this.label = label;
     this.keyCode = keyCode;
+    this.baseColor = baseColor;
 
     this.isHover = false;
     this.isPressed = false;
@@ -31,11 +44,11 @@ class SoundButton {
     const glow = this.isHover || this.isPressed;
 
     if (glow) {
-      fill(90, 210, 230);
+      fill(this.baseColor);
       drawingContext.shadowBlur = 25;
-      drawingContext.shadowColor = "rgba(90,210,230,0.7)";
+      drawingContext.shadowColor = this.baseColor.toString();
     } else {
-      fill(60, 180, 200);
+      fill(lerpColor(this.baseColor, color(255), 0.25));
       drawingContext.shadowBlur = 0;
     }
 
@@ -47,19 +60,19 @@ class SoundButton {
       this.y + (this.size - s) / 2,
       s,
       s,
-      16
+      18
     );
 
-    // Sound reactive pulse
+    // Pulse ring
     noFill();
-    stroke(90, 210, 230, this.pulse);
+    stroke(red(this.baseColor), green(this.baseColor), blue(this.baseColor), this.pulse);
     strokeWeight(3);
     rect(
       this.x - this.pulse / 2,
       this.y - this.pulse / 2,
       this.size + this.pulse,
       this.size + this.pulse,
-      18
+      22
     );
 
     // Label
@@ -76,14 +89,13 @@ class SoundButton {
     this.sound.play();
     this.isPressed = true;
     this.pulse = 40;
+
+    const g = createPastelGradient(this.baseColor);
+    targetTop = g.top;
+    targetBottom = g.bottom;
+    gradientLerp = 0;
   }
 }
-
-// ----------------------------------
-// Global variables
-// ----------------------------------
-let buttons = [];
-let sounds = [];
 
 // ----------------------------------
 // Load sounds
@@ -109,14 +121,22 @@ function setup() {
   const startY = height / 2 - size - gap / 2;
 
   const positions = [
-    { x: startX, y: startY },                 // UP
-    { x: startX + size + gap, y: startY },    // RIGHT
-    { x: startX + size + gap, y: startY + size + gap }, // DOWN
-    { x: startX, y: startY + size + gap }     // LEFT
+    { x: startX, y: startY },
+    { x: startX + size + gap, y: startY },
+    { x: startX + size + gap, y: startY + size + gap },
+    { x: startX, y: startY + size + gap }
   ];
 
- const labels = ["KICK", "SNARE", "HAT", "CLAP"];
+  const labels = ["KICK", "SNARE", "HAT", "CLAP"];
   const keys = [UP_ARROW, RIGHT_ARROW, DOWN_ARROW, LEFT_ARROW];
+
+  // Distinct base colors
+  const colors = [
+    color(255, 120, 180), // pink
+    color(120, 170, 255), // blue
+    color(120, 220, 170), // green
+    color(255, 200, 120)  // peach
+  ];
 
   for (let i = 0; i < 4; i++) {
     buttons.push(
@@ -126,23 +146,65 @@ function setup() {
         size,
         sounds[i],
         labels[i],
-        keys[i]
+        keys[i],
+        colors[i]
       )
     );
   }
+
+  // Initial background
+  currentTop = color(40, 40, 60);
+  currentBottom = color(15, 15, 30);
+  targetTop = currentTop;
+  targetBottom = currentBottom;
 }
 
 // ----------------------------------
 // Draw
 // ----------------------------------
 function draw() {
-  background(20);
+  gradientLerp = min(gradientLerp + 0.02, 1);
+
+  currentTop = lerpColor(currentTop, targetTop, gradientLerp);
+  currentBottom = lerpColor(currentBottom, targetBottom, gradientLerp);
+
+  drawGradient(currentTop, currentBottom);
 
   for (let button of buttons) {
     button.update();
     button.draw();
     button.isPressed = false;
   }
+}
+
+// ----------------------------------
+// Gradient renderer
+// ----------------------------------
+function drawGradient(topColor, bottomColor) {
+  noFill();
+  for (let y = 0; y < height; y++) {
+    let t = y / height;
+    let c = lerpColor(topColor, bottomColor, t);
+    stroke(c);
+    line(0, y, width, y);
+  }
+}
+
+// ----------------------------------
+// Pastel gradient generator
+// ----------------------------------
+function createPastelGradient(base) {
+  colorMode(HSB, 360, 100, 100, 100);
+
+  let h = hue(base);
+  let s = saturation(base);
+  let b = brightness(base);
+
+  let top = color(h, max(10, s * 0.25), min(100, b + 20));
+  let bottom = color(h, max(8, s * 0.18), min(100, b + 10));
+
+  colorMode(RGB, 255);
+  return { top, bottom };
 }
 
 // ----------------------------------
@@ -157,7 +219,7 @@ function mousePressed() {
 }
 
 // ----------------------------------
-// Keyboard interaction (ARROW KEYS)
+// Keyboard interaction
 // ----------------------------------
 function keyPressed() {
   for (let button of buttons) {
@@ -165,4 +227,11 @@ function keyPressed() {
       button.trigger();
     }
   }
+}
+
+// ----------------------------------
+// Resize handling
+// ----------------------------------
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
