@@ -1,10 +1,41 @@
-/* basic css add  */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #0f0f14;
+  background: radial-gradient(circle at top, #1b0033, #050008);
+  overflow: hidden;
 }
 
 canvas {
   display: block;
+}
+
+/* Arcade UI */
+#ui {
+  position: absolute;
+  top: 24px;
+  width: 100%;
+  text-align: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#ui h1 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 32px;
+  color: #00ffff;
+  text-shadow:
+    0 0 10px #00ffff,
+    0 0 20px #00ffff,
+    0 0 40px #00ffff;
+  margin-top: 50px;
+}
+
+#ui p {
+  margin-top: 7px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: #ff00ff;
+  text-shadow: 0 0 10px #ff00ff;
 }
