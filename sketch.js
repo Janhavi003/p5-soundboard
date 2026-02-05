@@ -1,26 +1,29 @@
-// ----------------------------------
-// Globals
-// ----------------------------------
+const PAD_CONFIG = [
+  { label: "KICK", key: "Q", file: "kick.mp3", color: [255, 60, 180] },
+  { label: "SNARE", key: "W", file: "snare.mp3", color: [0, 200, 255] },
+  { label: "HAT", key: "E", file: "hat.mp3", color: [0, 255, 150] },
+  { label: "CLAP", key: "A", file: "clap.mp3", color: [255, 200, 0] },
+  { label: "FX 1", key: "S", file: "fx1.mp3", color: [180, 120, 255] },
+  { label: "FX 2", key: "D", file: "fx2.mp3", color: [255, 140, 0] },
+  { label: "BASS", key: "Z", file: "bass.mp3", color: [80, 200, 255] },
+  { label: "PERC", key: "X", file: "perc.mp3", color: [255, 120, 160] },
+  { label: "LEAD", key: "C", file: "lead.mp3", color: [120, 255, 180] }
+];
+
 let buttons = [];
-let sounds = [];
-
-let currentTop;
-let currentBottom;
-let targetTop;
-let targetBottom;
+let currentTop, currentBottom;
+let targetTop, targetBottom;
 let gradientLerp = 1;
+let globalPulse = 0;
 
-// ----------------------------------
-// Sound Button Class
-// ----------------------------------
 class SoundButton {
-  constructor(x, y, size, sound, label, keyCode, baseColor) {
+  constructor(x, y, size, sound, label, key, baseColor) {
     this.x = x;
     this.y = y;
     this.size = size;
     this.sound = sound;
     this.label = label;
-    this.keyCode = keyCode;
+    this.key = key;
     this.baseColor = baseColor;
 
     this.isHover = false;
@@ -36,21 +39,17 @@ class SoundButton {
       mouseY < this.y + this.size;
 
     this.pulse *= 0.85;
+    this.isPressed = this.isPressed && this.pulse > 5;
   }
 
   draw() {
     noStroke();
-
     const glow = this.isHover || this.isPressed;
-
-    if (glow) {
-      fill(this.baseColor);
-      drawingContext.shadowBlur = 35;
-      drawingContext.shadowColor = this.baseColor.toString();
-    } else {
-      fill(lerpColor(this.baseColor, color(255), 0.2));
-      drawingContext.shadowBlur = 0;
-    }
+    let fillColor = this.baseColor;
+    if (this.isPressed) fillColor = lerpColor(this.baseColor, color(0), 0.15);
+    fill(fillColor);
+    drawingContext.shadowBlur = glow ? 35 : 0;
+    drawingContext.shadowColor = this.baseColor.toString();
 
     const scale = this.isPressed ? 0.9 : 1;
     const s = this.size * scale;
@@ -60,57 +59,39 @@ class SoundButton {
       this.y + (this.size - s) / 2,
       s,
       s,
-      12
+      14
     );
 
-    // Arcade border
     stroke(255, 80);
     strokeWeight(2);
     noFill();
-    rect(this.x, this.y, this.size, this.size, 12);
+    rect(this.x, this.y, this.size, this.size, 14);
 
-    // Pulse ring
     noFill();
     stroke(red(this.baseColor), green(this.baseColor), blue(this.baseColor), this.pulse);
     strokeWeight(3);
-    rect(
-      this.x - this.pulse / 2,
-      this.y - this.pulse / 2,
-      this.size + this.pulse,
-      this.size + this.pulse,
-      16
-    );
+    rect(this.x - this.pulse / 2, this.y - this.pulse / 2, this.size + this.pulse, this.size + this.pulse, 18);
 
-    // Label
     noStroke();
     fill(0);
     textAlign(CENTER, CENTER);
-    textFont("Press Start 2P");
     textSize(12);
     text(this.label, this.x + this.size / 2, this.y + this.size / 2);
 
-    // Key hint
-    fill(0, 150);
     textSize(8);
-    text(this.keySymbol(), this.x + this.size / 2, this.y + this.size / 2 + 26);
+    fill(0, 150);
+    text(this.key, this.x + this.size / 2, this.y + this.size / 2 + 26);
 
     drawingContext.shadowBlur = 0;
   }
 
-  keySymbol() {
-    if (this.keyCode === UP_ARROW) return "▲";
-    if (this.keyCode === DOWN_ARROW) return "▼";
-    if (this.keyCode === LEFT_ARROW) return "◀";
-    if (this.keyCode === RIGHT_ARROW) return "▶";
-    return "";
-  }
-
   trigger() {
     userStartAudio();
+    if (this.sound.isPlaying()) this.sound.stop();
     this.sound.play();
     this.isPressed = true;
-    this.pulse = 45;
-
+    this.pulse = this.size * 0.4;
+    globalPulse = 30;
     const g = createArcadeGradient(this.baseColor);
     targetTop = g.top;
     targetBottom = g.bottom;
@@ -118,113 +99,77 @@ class SoundButton {
   }
 }
 
-// ----------------------------------
-// Load Sounds
-// ----------------------------------
 function preload() {
-  sounds.push(loadSound("assets/sounds/kick.mp3"));
-  sounds.push(loadSound("assets/sounds/snare.mp3"));
-  sounds.push(loadSound("assets/sounds/hat.mp3"));
-  sounds.push(loadSound("assets/sounds/clap.mp3"));
+  for (let pad of PAD_CONFIG) {
+    pad.sound = loadSound(`assets/sounds/${pad.file}`);
+  }
 }
 
-// ----------------------------------
-// Setup
-// ----------------------------------
 function setup() {
   createCanvas(windowWidth, windowHeight);
   textFont("Press Start 2P");
-
-  const size = 140;
-  const gap = 36;
-
-  const grid = size * 2 + gap;
-  const startX = width / 2 - grid / 2;
-  const startY = height / 2 - grid / 2;
-
-  const positions = [
-    { x: startX, y: startY },
-    { x: startX + size + gap, y: startY },
-    { x: startX + size + gap, y: startY + size + gap },
-    { x: startX, y: startY + size + gap }
-  ];
-
-  const labels = ["KICK", "SNARE", "HAT", "CLAP"];
-  const keys = [UP_ARROW, RIGHT_ARROW, DOWN_ARROW, LEFT_ARROW];
-
-  const colors = [
-    color(255, 60, 180),  // neon pink
-    color(0, 200, 255),   // cyan
-    color(0, 255, 150),   // green
-    color(255, 200, 0)    // yellow
-  ];
-
-  for (let i = 0; i < 4; i++) {
-    buttons.push(
-      new SoundButton(
-        positions[i].x,
-        positions[i].y,
-        size,
-        sounds[i],
-        labels[i],
-        keys[i],
-        colors[i]
-      )
-    );
-  }
 
   currentTop = color(20, 0, 40);
   currentBottom = color(5, 0, 15);
   targetTop = currentTop;
   targetBottom = currentBottom;
+
+  layoutButtons();
 }
 
-// ----------------------------------
-// Draw
-// ----------------------------------
+function layoutButtons() {
+  buttons = [];
+
+  const cols = 3;
+  const size = min(width, height) * 0.18;
+  const gap = size * 0.25;
+  const total = cols * size + (cols - 1) * gap;
+  const startX = width / 2 - total / 2;
+  const startY = height / 2 - total / 2 + 20;
+
+  PAD_CONFIG.forEach((pad, i) => {
+    const x = startX + (i % cols) * (size + gap);
+    const y = startY + floor(i / cols) * (size + gap);
+    buttons.push(new SoundButton(x, y, size, pad.sound, pad.label, pad.key, color(...pad.color)));
+  });
+}
+
 function draw() {
   gradientLerp = min(gradientLerp + 0.03, 1);
-
+  globalPulse *= 0.9;
   currentTop = lerpColor(currentTop, targetTop, gradientLerp);
   currentBottom = lerpColor(currentBottom, targetBottom, gradientLerp);
-
   drawGradient(currentTop, currentBottom);
+
+  noStroke();
+  fill(0, 60);
+  rectMode(CENTER);
+  rectMode(CORNER);
 
   for (let b of buttons) {
     b.update();
     b.draw();
-    b.isPressed = false;
   }
 }
 
-// ----------------------------------
-// Gradient
-// ----------------------------------
 function drawGradient(topColor, bottomColor) {
   for (let y = 0; y < height; y++) {
-    let t = y / height;
+    const t = y / height;
+    const wobble = sin(t * PI + frameCount * 0.05) * globalPulse;
     stroke(lerpColor(topColor, bottomColor, t));
-    line(0, y, width, y);
+    line(wobble * 0.2, y, width + wobble * 0.2, y);
   }
 }
 
-// ----------------------------------
-// Arcade Gradient Generator
-// ----------------------------------
 function createArcadeGradient(base) {
   colorMode(HSB, 360, 100, 100);
-  let h = hue(base);
-
-  let top = color(h, 80, 25);
-  let bottom = color(h, 90, 10);
-
+  const h = hue(base);
+  const top = color(h, 80, 25);
+  const bottom = color(h, 90, 10);
   colorMode(RGB, 255);
   return { top, bottom };
 }
 
-// ----------------------------------
-// Interaction
-// ----------------------------------
 function mousePressed() {
   for (let b of buttons) {
     if (b.isHover) b.trigger();
@@ -233,10 +178,13 @@ function mousePressed() {
 
 function keyPressed() {
   for (let b of buttons) {
-    if (keyCode === b.keyCode) b.trigger();
+    if (key.toUpperCase() === b.key) {
+      b.trigger();
+    }
   }
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  layoutButtons();
 }
